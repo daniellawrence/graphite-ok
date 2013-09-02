@@ -1,0 +1,16 @@
+<html>
+
+  <body>
+
+    <h3>{{message}}</h3>
+
+    {% for k,v in data.items() %}
+    <strong>{{k}}</strong> - {{v}}<Br/ >
+    {% endfor %}
+
+
+    <img src="{{ data['graph_url']}}" />
+
+  </body>
+
+</html>

@@ -1,0 +1,13 @@
+<html>
+
+  <body>
+
+    <form method='get' action='/'>
+      <input type='text' name='target' id='target'/>
+      <input type ='submit' name='submit' id='submit' />
+
+     </form>
+
+  </body>
+
+</html>
