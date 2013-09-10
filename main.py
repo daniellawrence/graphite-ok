@@ -14,11 +14,14 @@ def _message(message, data, http_code=200):
 def ok(message, data):
     return _message("OK: %s" % message, data, 200)
 
+
 def warning(message, data):
     return _message("CRIT: %s" % message, data, WARNING_HTTP_RC)
 
+
 def critical(message, data):
     return _message("CRIT: %s" % message, data, ERROR_HTTP_RC)
+
 
 def build_graphite_url(target, within='15minutes'):
     base_render_url = 'http://%s/render?from=-%s&until=-&target=' % (GRAPHITE_SERVER, within)
@@ -26,13 +29,15 @@ def build_graphite_url(target, within='15minutes'):
     print render_url
     return render_url
 
+
 def build_graph_url(target, within='15minutes'):
     base_render_url = 'http://%s/render?from=-%s&until=-&target=' % (GRAPHITE_SERVER, within)
-    render_url = '%s%s&height=500&width=800&lineMode=staircase' % (base_render_url, target)
+    render_url = '%s%s&height=500&width=800&lineMode=staircase&template=plain' % (base_render_url, target)
     if 'asPercent' in render_url:
         render_url += '&yMin=0&yMax=100'
     print render_url
     return render_url
+
 
 def grab_graphite_data(target):
     render_url = build_graphite_url(target)
@@ -58,8 +63,10 @@ def grab_graphite_data(target):
         'render_url': render_url, 'graph_url': graph_url
         }
 
+
 def helper():
     return render_template("base.html")
+
 
 @app.route("/")
 def index():
@@ -71,6 +78,8 @@ def index():
     target = args['target']
     target_min = None
     target_max = None
+    short_target = target.split('(')[-1].split(')')[0].split('%')[0]
+
     if 'min' in args and args['min'] != '':
         target_min = int(args['min'])
     if 'max' in args and args['max'] != '':
@@ -82,22 +91,34 @@ def index():
         return data
 
     data['target'] = target
+    data['short_target'] = short_target
     data['target_min'] = target_min
     data['target_max'] = target_max
 
     if target_min:
         data['graph_url'] = data['graph_url'] + '&target=threshold(%s, "min", "yellow")' % target_min
+        desc = "%s should be less than %s" % (short_target, target_min)
+        data['desc'] = desc
 
     if target_max:
+        desc = "%s should be greater than %s" % (short_target, target_max)
+        data['desc'] = desc
         data['graph_url'] = data['graph_url'] + '&target=threshold(%s, "max", "red")' % target_max
 
+    if target_min and target_max:
+        desc = "%s should be between %s and %s" % (short_target, target_min, target_max)
+        data['desc'] = desc
 
     data_avg = data['avg']
 
     if target_min and data_avg < target_min:
+        p_under = (target_min / data_avg) * 100 - 100
+        data['p_under'] = p_under
         return critical("%.2f less than %s" % (data_avg, target_min), data)
 
     if target_max and data_avg > target_max:
+        p_over = (target_max / data_avg) * 100
+        data['p_over'] = p_over
         return critical("%.2f greater than %s" % (data_avg, target_max), data)
 
     if target_min and target_max:
@@ -110,6 +131,7 @@ def index():
         return ok("%.2f is less than max %s" % (data_avg, target_max), data)
 
     return ok("%.2f" % data_avg, data)
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True)
